@@ -2,211 +2,54 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import AudioVideoController from '../audiovideocontroller/AudioVideoController';
-import DefaultAudioVideoController from '../audiovideocontroller/DefaultAudioVideoController';
-import FullJitterBackoff from '../backoff/FullJitterBackoff';
-import DeviceChangeObserver from '../devicechangeobserver/DeviceChangeObserver';
-import DefaultDeviceController from '../devicecontroller/DefaultDeviceController';
-import Device from '../devicecontroller/Device';
-import DevicePermission from '../devicecontroller/DevicePermission';
-import Logger from '../logger/Logger';
-import DeviceControllerBasedMediaStreamBroker from '../mediastreambroker/DeviceControllerBasedMediaStreamBroker';
-import MeetingSessionConfiguration from '../meetingsession/MeetingSessionConfiguration';
 import MeetingSessionCredentials from '../meetingsession/MeetingSessionCredentials';
-import DefaultReconnectController from '../reconnectcontroller/DefaultReconnectController';
-import DefaultWebSocketAdapter from '../websocketadapter/DefaultWebSocketAdapter';
 import ContentShareConstants from './ContentShareConstants';
 import ContentShareController from './ContentShareController';
+import ContentShareMediaStreamBroker from "./ContentShareMediaStreamBroker";
+import MeetingSessionConfiguration from "../meetingsession/MeetingSessionConfiguration";
 
 export default class DefaultContentShareController
-  implements ContentShareController, DeviceControllerBasedMediaStreamBroker {
-  private static RECONNECT_TIMEOUT_MS = 120 * 1000;
-  private static RECONNECT_FIXED_WAIT_MS = 0;
-  private static RECONNECT_SHORT_BACKOFF_MS = 1 * 1000;
-  private static RECONNECT_LONG_BACKOFF_MS = 5 * 1000;
+  implements ContentShareController {
 
-  private configuration: MeetingSessionConfiguration;
-  private audioVideo: AudioVideoController;
-  private mediaStream: MediaStream;
-
-  constructor(private logger: Logger, configuration: MeetingSessionConfiguration) {
-    this.configuration = new MeetingSessionConfiguration();
-    this.configuration.meetingId = configuration.meetingId;
-    this.configuration.urls = configuration.urls;
-    this.configuration.credentials = new MeetingSessionCredentials();
-    this.configuration.credentials.attendeeId =
+  static createContentShareMeetingSessionConfigure(configuration: MeetingSessionConfiguration):
+    MeetingSessionConfiguration {
+    let contentShareConfiguration = new MeetingSessionConfiguration();
+    contentShareConfiguration.meetingId = configuration.meetingId;
+    contentShareConfiguration.urls = configuration.urls;
+    contentShareConfiguration.credentials = new MeetingSessionCredentials();
+    contentShareConfiguration.credentials.attendeeId =
       configuration.credentials.attendeeId + ContentShareConstants.Modality;
-    this.configuration.credentials.joinToken =
+    contentShareConfiguration.credentials.joinToken =
       configuration.credentials.joinToken + ContentShareConstants.Modality;
-    this.audioVideo = new DefaultAudioVideoController(
-      this.configuration,
-      this.logger,
-      new DefaultWebSocketAdapter(this.logger),
-      this,
-      new DefaultReconnectController(
-        DefaultContentShareController.RECONNECT_TIMEOUT_MS,
-        new FullJitterBackoff(
-          DefaultContentShareController.RECONNECT_FIXED_WAIT_MS,
-          DefaultContentShareController.RECONNECT_SHORT_BACKOFF_MS,
-          DefaultContentShareController.RECONNECT_LONG_BACKOFF_MS
-        )
-      )
-    );
+    return contentShareConfiguration;
   }
 
+  constructor(private mediaStreamBroker: ContentShareMediaStreamBroker,
+              private audioVideo: AudioVideoController) {}
+
   async startContentShare(stream: MediaStream): Promise<void> {
-    this.mediaStream = stream;
+    this.mediaStreamBroker.mediaStream = stream;
     this.audioVideo.start();
-    if (this.mediaStream.getVideoTracks().length > 0) {
+    if (this.mediaStreamBroker.mediaStream.getVideoTracks().length > 0) {
       this.audioVideo.videoTileController.startLocalVideoTile();
     }
   }
 
   async startContentShareFromScreenCapture(sourceId?: string): Promise<void> {
-    this.mediaStream = await this.acquireDisplayInputStream(
-      this.screenCaptureDisplayMediaConstraints(sourceId)
-    );
-    this.startContentShare(this.mediaStream);
+    let mediaStream = await this.mediaStreamBroker.acquireScreenCaptureDisplayInputStream(sourceId);
+    this.startContentShare(mediaStream);
   }
 
   pauseContentShare(): void {
-    if (this.mediaStream !== null && this.mediaStream.getTracks().length > 0) {
-      this.mediaStream.getTracks()[0].enabled = false;
-    }
+    this.mediaStreamBroker.toggleMediaStream(false);
   }
 
   unpauseContentShare(): void {
-    if (this.mediaStream !== null && this.mediaStream.getTracks().length > 0) {
-      this.mediaStream.getTracks()[0].enabled = true;
-    }
+    this.mediaStreamBroker.toggleMediaStream(true);
   }
 
   stopContentShare(): void {
     this.audioVideo.stop();
-    if (this.mediaStream && this.mediaStream.getTracks().length > 0) {
-      this.mediaStream.getTracks()[0].stop();
-    }
-    this.mediaStream = null;
-  }
-
-  private screenCaptureDisplayMediaConstraints(sourceId?: string): MediaStreamConstraints {
-    return {
-      audio: false,
-      video: {
-        ...(!sourceId && {
-          frameRate: {
-            max: 3,
-          },
-        }),
-        ...(sourceId && {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: sourceId,
-            maxFrameRate: 3,
-          },
-        }),
-      },
-    };
-  }
-
-  async acquireAudioInputStream(): Promise<MediaStream> {
-    if (this.mediaStream.getAudioTracks().length === 0) {
-      return DefaultDeviceController.synthesizeAudioDevice(0) as MediaStream;
-    }
-    return this.mediaStream;
-  }
-
-  async acquireVideoInputStream(): Promise<MediaStream> {
-    return this.mediaStream;
-  }
-
-  releaseMediaStream(mediaStreamToRelease: MediaStream): void {
-    this.logger.warn('release media stream called');
-    return;
-  }
-
-  async acquireDisplayInputStream(streamConstraints: MediaStreamConstraints): Promise<MediaStream> {
-    if (
-      streamConstraints &&
-      streamConstraints.video &&
-      // @ts-ignore
-      streamConstraints.video.mandatory &&
-      // @ts-ignore
-      streamConstraints.video.mandatory.chromeMediaSource &&
-      // @ts-ignore
-      streamConstraints.video.mandatory.chromeMediaSourceId
-    ) {
-      return navigator.mediaDevices.getUserMedia(streamConstraints);
-    }
-    // @ts-ignore https://github.com/microsoft/TypeScript/issues/31821
-    return navigator.mediaDevices.getDisplayMedia(streamConstraints);
-  }
-
-  bindToAudioVideoController(audioVideoController: AudioVideoController): void {
-    throw new Error('unsupported');
-  }
-
-  async listAudioInputDevices(): Promise<MediaDeviceInfo[]> {
-    throw new Error('unsupported');
-  }
-
-  async listVideoInputDevices(): Promise<MediaDeviceInfo[]> {
-    throw new Error('unsupported');
-  }
-
-  async listAudioOutputDevices(): Promise<MediaDeviceInfo[]> {
-    throw new Error('unsupported');
-  }
-
-  chooseAudioInputDevice(device: Device): Promise<DevicePermission> {
-    throw new Error('unsupported');
-  }
-
-  chooseVideoInputDevice(device: Device): Promise<DevicePermission> {
-    throw new Error('unsupported');
-  }
-
-  chooseAudioOutputDevice(deviceId: string | null): Promise<void> {
-    throw new Error('unsupported');
-  }
-
-  addDeviceChangeObserver(observer: DeviceChangeObserver): void {
-    throw new Error('unsupported');
-  }
-
-  removeDeviceChangeObserver(observer: DeviceChangeObserver): void {
-    throw new Error('unsupported');
-  }
-
-  createAnalyserNodeForAudioInput(): AnalyserNode | null {
-    throw new Error('unsupported');
-  }
-
-  startVideoPreviewForVideoInput(element: HTMLVideoElement): void {
-    throw new Error('unsupported');
-  }
-
-  stopVideoPreviewForVideoInput(element: HTMLVideoElement): void {
-    throw new Error('unsupported');
-  }
-
-  setDeviceLabelTrigger(trigger: () => Promise<MediaStream>): void {
-    throw new Error('unsupported');
-  }
-
-  mixIntoAudioInput(stream: MediaStream): MediaStreamAudioSourceNode {
-    throw new Error('unsupported');
-  }
-
-  chooseVideoInputQuality(
-    width: number,
-    height: number,
-    frameRate: number,
-    maxBandwidthKbps: number
-  ): void {
-    throw new Error('unsupported');
-  }
-
-  enableWebAudio(): boolean {
-    return false;
+    this.mediaStreamBroker.cleanup();
   }
 }

@@ -10,10 +10,8 @@ import AudioVideoObserver from '../audiovideoobserver/AudioVideoObserver';
 import DefaultBrowserBehavior from '../browserbehavior/DefaultBrowserBehavior';
 import ConnectionHealthData from '../connectionhealthpolicy/ConnectionHealthData';
 import SignalingAndMetricsConnectionMonitor from '../connectionmonitor/SignalingAndMetricsConnectionMonitor';
-import DeviceController from '../devicecontroller/DeviceController';
 import Logger from '../logger/Logger';
 import Maybe from '../maybe/Maybe';
-import DeviceControllerBasedMediaStreamBroker from '../mediastreambroker/DeviceControllerBasedMediaStreamBroker';
 import MediaStreamBroker from '../mediastreambroker/MediaStreamBroker';
 import MeetingSessionConfiguration from '../meetingsession/MeetingSessionConfiguration';
 import MeetingSessionStatus from '../meetingsession/MeetingSessionStatus';
@@ -73,7 +71,7 @@ export default class DefaultAudioVideoController implements AudioVideoController
   private _realtimeController: RealtimeController;
   private _activeSpeakerDetector: ActiveSpeakerDetector;
   private _videoTileController: VideoTileController;
-  private _deviceController: DeviceControllerBasedMediaStreamBroker;
+  private _mediaStreamBroker: MediaStreamBroker;
   private _reconnectController: ReconnectController;
   private _audioMixController: AudioMixController;
 
@@ -90,7 +88,7 @@ export default class DefaultAudioVideoController implements AudioVideoController
     configuration: MeetingSessionConfiguration,
     logger: Logger,
     webSocketAdapter: WebSocketAdapter,
-    deviceController: DeviceControllerBasedMediaStreamBroker,
+    mediaStreamBroker: MediaStreamBroker,
     reconnectController: ReconnectController,
   ) {
     this._logger = logger;
@@ -104,7 +102,7 @@ export default class DefaultAudioVideoController implements AudioVideoController
       configuration.credentials.attendeeId,
       this.handleHasBandwidthPriority.bind(this)
     );
-    this._deviceController = deviceController;
+    this._mediaStreamBroker = mediaStreamBroker;
     this._reconnectController = reconnectController;
     this._videoTileController = new DefaultVideoTileController(
       new DefaultVideoTileFactory(),
@@ -144,11 +142,7 @@ export default class DefaultAudioVideoController implements AudioVideoController
   }
 
   get mediaStreamBroker(): MediaStreamBroker {
-    return this._deviceController;
-  }
-
-  get deviceController(): DeviceController {
-    return this._deviceController;
+    return this._mediaStreamBroker;
   }
 
   addObserver(observer: AudioVideoObserver): void {
@@ -187,8 +181,7 @@ export default class DefaultAudioVideoController implements AudioVideoController
       this._webSocketAdapter,
       this.logger
     );
-    this.meetingSessionContext.mediaStreamBroker = this._deviceController;
-    this.meetingSessionContext.deviceController = this._deviceController;
+    this.meetingSessionContext.mediaStreamBroker = this._mediaStreamBroker;
     this.meetingSessionContext.realtimeController = this._realtimeController;
     this.meetingSessionContext.audioMixController = this._audioMixController;
     this.meetingSessionContext.audioVideoController = this;

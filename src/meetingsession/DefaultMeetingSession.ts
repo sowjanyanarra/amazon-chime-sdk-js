@@ -20,6 +20,7 @@ import ScreenShareViewFacade from '../screenshareviewfacade/ScreenShareViewFacad
 import DefaultWebSocketAdapter from '../websocketadapter/DefaultWebSocketAdapter';
 import MeetingSession from './MeetingSession';
 import MeetingSessionConfiguration from './MeetingSessionConfiguration';
+import ContentShareMediaStreamBroker from "../contentsharecontroller/ContentShareMediaStreamBroker";
 
 export default class DefaultMeetingSession implements MeetingSession {
   private _configuration: MeetingSessionConfiguration;
@@ -69,16 +70,30 @@ export default class DefaultMeetingSession implements MeetingSession {
       this._configuration,
       this._logger
     );
+    let contentShareMediaStreamBroker = new ContentShareMediaStreamBroker(this._logger);
     this.contentShareController = new DefaultContentShareController(
-      this._logger,
-      this._configuration
+      contentShareMediaStreamBroker,
+      new DefaultAudioVideoController(
+        DefaultContentShareController.createContentShareMeetingSessionConfigure(this._configuration),
+        this._logger,
+        new DefaultWebSocketAdapter(this._logger),
+        contentShareMediaStreamBroker,
+        new DefaultReconnectController(
+          DefaultMeetingSession.RECONNECT_TIMEOUT_MS,
+          new FullJitterBackoff(
+            DefaultMeetingSession.RECONNECT_FIXED_WAIT_MS,
+            DefaultMeetingSession.RECONNECT_SHORT_BACKOFF_MS,
+            DefaultMeetingSession.RECONNECT_LONG_BACKOFF_MS
+          )
+        )
+      )
     );
     this.audioVideoFacade = new DefaultAudioVideoFacade(
       this.audioVideoController,
       this.audioVideoController.videoTileController,
       this.audioVideoController.realtimeController,
       this.audioVideoController.audioMixController,
-      this.audioVideoController.deviceController,
+      this._deviceController,
       this.contentShareController,
     );
     this.checkBrowserSupport();

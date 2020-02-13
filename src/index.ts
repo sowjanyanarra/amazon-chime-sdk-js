@@ -29,6 +29,7 @@ import ConnectionMonitor from './connectionmonitor/ConnectionMonitor';
 import ConsoleLogger from './logger/ConsoleLogger';
 import ContentShareConstants from './contentsharecontroller/ContentShareConstants';
 import ContentShareController from './contentsharecontroller/ContentShareController';
+import ContentShareMediaStreamBroker from './contentsharecontroller/ContentShareMediaStreamBroker';
 import CreatePeerConnectionTask from './task/CreatePeerConnectionTask';
 import CreateSDPTask from './task/CreateSDPTask';
 import DOMWebSocket from './domwebsocket/DOMWebSocket';
@@ -309,6 +310,7 @@ export {
   ConsoleLogger,
   ContentShareConstants,
   ContentShareController,
+  ContentShareMediaStreamBroker,
   CreatePeerConnectionTask,
   CreateSDPTask,
   DOMWebSocket,
