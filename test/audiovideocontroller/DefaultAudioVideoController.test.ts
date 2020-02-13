@@ -1,4 +1,4 @@
-// Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import * as chai from 'chai';
@@ -946,7 +946,7 @@ describe('DefaultAudioVideoController', () => {
       );
       class TestObserver implements AudioVideoObserver {
         audioVideoDidStop(sessionStatus: MeetingSessionStatus): void {
-          expect(sessionStatus.statusCode()).to.equal(MeetingSessionStatusCode.OK);
+          expect(sessionStatus.statusCode()).to.equal(MeetingSessionStatusCode.Left);
           done();
         }
       }
@@ -983,7 +983,7 @@ describe('DefaultAudioVideoController', () => {
       );
       class TestObserver implements AudioVideoObserver {
         audioVideoDidStop(sessionStatus: MeetingSessionStatus): void {
-          expect(sessionStatus.statusCode()).to.equal(MeetingSessionStatusCode.OK);
+          expect(sessionStatus.statusCode()).to.equal(MeetingSessionStatusCode.Left);
           done();
         }
       }
@@ -1016,7 +1016,7 @@ describe('DefaultAudioVideoController', () => {
       );
       class TestObserver implements AudioVideoObserver {
         audioVideoDidStop(sessionStatus: MeetingSessionStatus): void {
-          expect(sessionStatus.statusCode()).to.equal(MeetingSessionStatusCode.OK);
+          expect(sessionStatus.statusCode()).to.equal(MeetingSessionStatusCode.Left);
           done();
         }
       }
@@ -1052,7 +1052,7 @@ describe('DefaultAudioVideoController', () => {
 
       class TestObserver implements AudioVideoObserver {
         audioVideoDidStop(sessionStatus: MeetingSessionStatus): void {
-          expect(sessionStatus.statusCode()).to.equal(MeetingSessionStatusCode.OK);
+          expect(sessionStatus.statusCode()).to.equal(MeetingSessionStatusCode.Left);
           done();
         }
       }

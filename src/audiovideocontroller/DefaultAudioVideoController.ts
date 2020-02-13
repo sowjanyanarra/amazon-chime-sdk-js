@@ -1,4 +1,4 @@
-// Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import ActiveSpeakerDetector from '../activespeakerdetector/ActiveSpeakerDetector';
@@ -330,7 +330,7 @@ export default class DefaultAudioVideoController implements AudioVideoController
 
   stop(): void {
     this.sessionStateController.perform(SessionStateControllerAction.Disconnect, () => {
-      this.actionDisconnect(new MeetingSessionStatus(MeetingSessionStatusCode.OK), false);
+      this.actionDisconnect(new MeetingSessionStatus(MeetingSessionStatusCode.Left), false);
     });
   }
 
